@@ -50,7 +50,6 @@ class WeatherstackExtractor:
     def procesar_respuesta(self, data):
         try:
             if "current" not in data:
-                return None
 
             return {
                 "ciudad": data["location"]["name"],
@@ -92,7 +91,7 @@ class WeatherstackExtractor:
                 host="localhost",
                 database="clima_etl",
                 user="postgres",
-                password="FF"
+                password=""
             )
 
             cursor = conn.cursor()
