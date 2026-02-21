@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-
 import os
 import requests
 import json
 import pandas as pd
-import psycopg2
-import logging
-import time
 from datetime import datetime
 from dotenv import load_dotenv
+import logging
 
 # Cargar variables de entorno
 load_dotenv()
@@ -22,137 +19,100 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-
 logger = logging.getLogger(__name__)
 
-
 class WeatherstackExtractor:
-
     def __init__(self):
-        self.api_key = os.getenv("API_KEY")
-        self.base_url = os.getenv("WEATHERSTACK_BASE_URI")
-        self.ciudades = os.getenv("CIUDADES").split(",")
-
+        self.api_key = os.getenv('API_KEY')
+        self.base_url = os.getenv('WEATHERSTACK_BASE_URL')
+        self.ciudades = os.getenv('CIUDADES').split(',')
+        
+        if not self.api_key:
+            raise ValueError("API_KEY no configurada en .env")
+    
     def extraer_clima(self, ciudad):
+        """Extrae datos de clima para una ciudad específica"""
         try:
+            url = f"{self.base_url}/current"
             params = {
-                "access_key": self.api_key,
-                "query": ciudad
+                'access_key': self.api_key,
+                'query': ciudad.strip()
             }
-
-            response = requests.get(self.base_url + "/current", params=params)
-            return response.json()
-
-        except Exception as e:
-            logger.error(f"Error extrayendo datos: {e}")
-            return None
-
-    def procesar_respuesta(self, data):
-        try:
-            if "current" not in data:
+            
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            if 'error' in data:
+                logger.error(f"❌ Error en API para {ciudad}: {data['error']['info']}")
                 return None
-
-            return {
-                "ciudad": data["location"]["name"],
-                "pais": data["location"]["country"],
-                "latitud": data["location"]["lat"],
-                "longitud": data["location"]["lon"],
-                "temperatura": data["current"]["temperature"],
-                "humedad": data["current"]["humidity"],
-                "velocidad_viento": data["current"]["wind_speed"],
-                "descripcion": data["current"]["weather_descriptions"][0],
-                "fecha_extraccion": datetime.now()
-            }
-
+            
+            logger.info(f"✅ Datos extraídos para {ciudad}")
+            return data
+            
         except Exception as e:
-            logger.error(f"Error procesando respuesta: {e}")
+            logger.error(f"❌ Error extrayendo datos para {ciudad}: {str(e)}")
             return None
-
+    
+    def procesar_respuesta(self, response_data):
+        """Procesa la respuesta JSON a formato estructurado"""
+        try:
+            current = response_data.get('current', {})
+            location = response_data.get('location', {})
+            
+            return {
+                'ciudad': location.get('name'),
+                'pais': location.get('country'),
+                'latitud': location.get('lat'),
+                'longitud': location.get('lon'),
+                'temperatura': current.get('temperature'),
+                'sensacion_termica': current.get('feelslike'),
+                'humedad': current.get('humidity'),
+                'velocidad_viento': current.get('wind_speed'),
+                'descripcion': current.get('weather_descriptions', ['N/A'])[0],
+                'fecha_extraccion': datetime.now().isoformat(),
+                'codigo_tiempo': current.get('weather_code')
+            }
+        except Exception as e:
+            logger.error(f"Error procesando respuesta: {str(e)}")
+            return None
+    
     def ejecutar_extraccion(self):
+        """Ejecuta la extracción para todas las ciudades"""
         datos_extraidos = []
-
-        logger.info(f"Iniciando extracción para {len(self.ciudades)} ciudades")
-
+        
+        logger.info(f"Iniciando extracción para {len(self.ciudades)} ciudades...")
+        
         for ciudad in self.ciudades:
             response = self.extraer_clima(ciudad)
-
             if response:
                 datos_procesados = self.procesar_respuesta(response)
-
                 if datos_procesados:
                     datos_extraidos.append(datos_procesados)
-
-            time.sleep(2)
-
+        
         return datos_extraidos
-
-    def guardar_en_bd(self, datos):
-        try:
-            conn = psycopg2.connect(
-                host="localhost",
-                database="clima_etl",
-                user="postgres",
-                password="FF"
-            )
-
-            cursor = conn.cursor()
-
-            for dato in datos:
-                cursor.execute("""
-                    INSERT INTO mediciones (
-                        ciudad,
-                        pais,
-                        latitud,
-                        longitud,
-                        temperatura,
-                        humedad,
-                        velocidad_viento,
-                        descripcion,
-                        fecha_extraccion
-                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """, (
-                    dato["ciudad"],
-                    dato["pais"],
-                    dato["latitud"],
-                    dato["longitud"],
-                    dato["temperatura"],
-                    dato["humedad"],
-                    dato["velocidad_viento"],
-                    dato["descripcion"],
-                    dato["fecha_extraccion"]
-                ))
-
-            conn.commit()
-            cursor.close()
-            conn.close()
-
-            logger.info("Datos guardados en PostgreSQL")
-
-        except Exception as e:
-            logger.error(f"Error guardando en BD: {e}")
-
 
 if __name__ == "__main__":
     try:
         extractor = WeatherstackExtractor()
         datos = extractor.ejecutar_extraccion()
-
-        extractor.guardar_en_bd(datos)
-
-        # Guardar JSON
-        with open("data/clima_raw.json", "w") as f:
-            json.dump(datos, f, default=str, indent=2)
-
-        logger.info("Datos guardados en data/clima_raw.json")
-
-        # Guardar CSV
+        
+        # Guardar como JSON
+        with open('data/clima_raw.json', 'w') as f:
+            json.dump(datos, f, indent=2)
+        logger.info(f"📁 Datos guardados en data/clima_raw.json")
+        
+        # Guardar como CSV
         df = pd.DataFrame(datos)
-        df.to_csv("data/clima.csv", index=False)
-
-        logger.info("Datos guardados en data/clima.csv")
-
-        print("\nRESUMEN DE EXTRACCIÓN")
-        print(df)
-
+        df.to_csv('data/clima.csv', index=False)
+        logger.info(f"📁 Datos guardados en data/clima.csv")
+        
+        print("\n" + "="*50)
+        print("RESUMEN DE EXTRACCIÓN")
+        print("="*50)
+        print(df.to_string())
+        print("="*50)
+        
     except Exception as e:
-        logger.error(f"Error general: {e}")
+        logger.error(f"Error en extracción: {str(e)}")
