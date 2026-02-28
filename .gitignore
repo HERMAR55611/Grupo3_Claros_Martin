@@ -7,7 +7,6 @@ __pycache__/
 .env
 
 # Datos generados
-data/
 logs/
 
 # IDE
