@@ -1,0 +1,15 @@
+# Entorno virtual
+venv/
+*.pyc
+__pycache__/
+
+# Variables sensibles
+.env
+.env.local
+
+# Secrets de Streamlit
+.streamlit/secrets.toml
+
+# Archivos pesados
+data/
+logs/
