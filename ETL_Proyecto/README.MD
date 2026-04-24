@@ -22,7 +22,7 @@ Visualización interactiva con:
 - Filtros dinámicos
 
 ## 🌐 App en producción
-[PEGAR TU LINK DE STREAMLIT AQUÍ]
+https://grupo3clarosmartin-yx9ljbby9pj7ad6mm3obju.streamlit.app/
 
 ## ⚙️ Cómo ejecutar localmente
 
