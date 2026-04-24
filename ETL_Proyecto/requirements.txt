@@ -3,3 +3,5 @@ pandas
 python-dotenv
 matplotlib
 openpyxl
+psycopg2-binary
+SQLAlchemy
