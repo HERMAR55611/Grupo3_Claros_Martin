@@ -1,7 +1,8 @@
 import requests
 import pandas as pd
-import os
 import logging
+from sqlalchemy import text
+from scripts.database import get_connection
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,10 +30,23 @@ def extraer_lanzamientos():
 
         df = pd.DataFrame(lanzamientos)
 
-        os.makedirs("data", exist_ok=True)
-        df.to_csv("data/lanzamientos_spacex.csv", index=False)
+        conn = get_connection()
 
-        logging.info("✅ Datos guardados en data/lanzamientos_spacex.csv")
+        logging.info("📦 Insertando datos en Supabase...")
+
+        query = text("""
+        INSERT INTO lanzamientos_spacex 
+        (nombre, fecha, exito, cohete_id, detalles)
+        VALUES (:nombre, :fecha, :exito, :cohete_id, :detalles)
+        """)
+
+        registros = df.to_dict(orient="records")
+
+        conn.execute(query, registros)
+        conn.commit()
+        conn.close()
+
+        logging.info(f"✅ {len(df)} registros insertados en Supabase")
 
     except Exception as e:
         logging.error(f"❌ Error: {e}")

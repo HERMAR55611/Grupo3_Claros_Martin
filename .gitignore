@@ -1,14 +1,5 @@
-# Entorno virtual
 venv/
-__pycache__/
-*.pyc
-
-# Variables de entorno
 .env
-
-# Datos generados
-logs/
-
-# IDE
-.vscode/
-.idea/
+data/
+__pycache__/
+.streamlit/secrets.toml
