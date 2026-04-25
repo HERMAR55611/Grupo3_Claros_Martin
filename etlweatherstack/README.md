@@ -65,5 +65,5 @@ streamlit run scripts/app.py
 
 ## 👨‍💻 Autor
 
-Martín Herrera
+Martín Herrera - 
 Juan José Claros
