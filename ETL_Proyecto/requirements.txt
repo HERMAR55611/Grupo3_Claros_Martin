@@ -8,3 +8,9 @@ SQLAlchemy
 streamlit
 plotly
 numpy
+jupyter
+notebook
+scikit-learn
+statsmodels
+scipy
+seaborn
